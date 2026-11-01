@@ -1,3 +1,4 @@
+# LLM은 API 대신 Claude Code 헤드리스 에이전트(claude -p)로 호출한다. API로 바꿀 땐 ask()만 교체.
 import json
 import os
 import subprocess
