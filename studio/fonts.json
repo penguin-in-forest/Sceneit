@@ -1,0 +1,282 @@
+[
+ {
+  "key": "bagel",
+  "family": "Bagel Fat One",
+  "file": "BagelFatOne-Regular.ttf",
+  "dir": "bagelfatone",
+  "scale": 1.0,
+  "sw": 10
+ },
+ {
+  "key": "gasoek",
+  "family": "Gasoek One",
+  "file": "GasoekOne-Regular.ttf",
+  "dir": "gasoekone",
+  "scale": 1.0,
+  "sw": 10
+ },
+ {
+  "key": "dongle",
+  "family": "Dongle",
+  "file": "Dongle-Bold.ttf",
+  "dir": "dongle",
+  "scale": 1.45,
+  "sw": 10
+ },
+ {
+  "key": "sunflower",
+  "family": "Sunflower",
+  "file": "Sunflower-Bold.ttf",
+  "dir": "sunflower",
+  "scale": 1.0,
+  "sw": 10
+ },
+ {
+  "key": "gugi",
+  "family": "Gugi",
+  "file": "Gugi-Regular.ttf",
+  "dir": "gugi",
+  "scale": 1.0,
+  "sw": 10
+ },
+ {
+  "key": "yeonsung",
+  "family": "Yeon Sung",
+  "file": "YeonSung-Regular.ttf",
+  "dir": "yeonsung",
+  "scale": 1.0,
+  "sw": 6
+ },
+ {
+  "key": "cute",
+  "family": "Cute Font",
+  "file": "CuteFont-Regular.ttf",
+  "dir": "cutefont",
+  "scale": 1.25,
+  "sw": 6
+ },
+ {
+  "key": "poorstory",
+  "family": "Poor Story",
+  "file": "PoorStory-Regular.ttf",
+  "dir": "poorstory",
+  "scale": 1.1,
+  "sw": 6
+ },
+ {
+  "key": "stylish",
+  "family": "Stylish",
+  "file": "Stylish-Regular.ttf",
+  "dir": "stylish",
+  "scale": 1.0,
+  "sw": 6
+ },
+ {
+  "key": "gamja",
+  "family": "Gamja Flower",
+  "file": "GamjaFlower-Regular.ttf",
+  "dir": "gamjaflower",
+  "scale": 1.1,
+  "sw": 6
+ },
+ {
+  "key": "himelody",
+  "family": "Hi Melody",
+  "file": "HiMelody-Regular.ttf",
+  "dir": "himelody",
+  "scale": 1.15,
+  "sw": 6
+ },
+ {
+  "key": "dokdo",
+  "family": "Dokdo",
+  "file": "Dokdo-Regular.ttf",
+  "dir": "dokdo",
+  "scale": 1.2,
+  "sw": 6
+ },
+ {
+  "key": "eastsea",
+  "family": "East Sea Dokdo",
+  "file": "EastSeaDokdo-Regular.ttf",
+  "dir": "eastseadokdo",
+  "scale": 1.35,
+  "sw": 6
+ },
+ {
+  "key": "kirang",
+  "family": "Kirang Haerang",
+  "file": "KirangHaerang-Regular.ttf",
+  "dir": "kiranghaerang",
+  "scale": 1.2,
+  "sw": 6
+ },
+ {
+  "key": "singleday",
+  "family": "Single Day",
+  "file": "SingleDay-Regular.ttf",
+  "dir": "singleday",
+  "scale": 1.1,
+  "sw": 6
+ },
+ {
+  "key": "songmyung",
+  "family": "Song Myung",
+  "file": "SongMyung-Regular.ttf",
+  "dir": "songmyung",
+  "scale": 1.0,
+  "sw": 6
+ },
+ {
+  "key": "nanumpen",
+  "family": "Nanum Pen Script",
+  "file": "NanumPenScript-Regular.ttf",
+  "dir": "nanumpenscript",
+  "scale": 1.35,
+  "sw": 6
+ },
+ {
+  "key": "nanumbrush",
+  "family": "Nanum Brush Script",
+  "file": "NanumBrushScript-Regular.ttf",
+  "dir": "nanumbrushscript",
+  "scale": 1.3,
+  "sw": 6
+ },
+ {
+  "key": "nanumgothic",
+  "family": "Nanum Gothic",
+  "file": "NanumGothic-Bold.ttf",
+  "dir": "nanumgothic",
+  "scale": 1.0,
+  "sw": 10
+ },
+ {
+  "key": "nanummyeongjo",
+  "family": "Nanum Myeongjo",
+  "file": "NanumMyeongjo-Bold.ttf",
+  "dir": "nanummyeongjo",
+  "scale": 1.0,
+  "sw": 10
+ },
+ {
+  "key": "gowundodum",
+  "family": "Gowun Dodum",
+  "file": "GowunDodum-Regular.ttf",
+  "dir": "gowundodum",
+  "scale": 1.0,
+  "sw": 10
+ },
+ {
+  "key": "gowunbatang",
+  "family": "Gowun Batang",
+  "file": "GowunBatang-Bold.ttf",
+  "dir": "gowunbatang",
+  "scale": 1.0,
+  "sw": 10
+ },
+ {
+  "key": "hahmlet",
+  "family": "Hahmlet",
+  "file": "Hahmlet[wght].ttf",
+  "dir": "hahmlet",
+  "scale": 1.0,
+  "sw": 10
+ },
+ {
+  "key": "orbit",
+  "family": "Orbit",
+  "file": "Orbit-Regular.ttf",
+  "dir": "orbit",
+  "scale": 1.0,
+  "sw": 10
+ },
+ {
+  "key": "diphylleia",
+  "family": "Diphylleia",
+  "file": "Diphylleia-Regular.ttf",
+  "dir": "diphylleia",
+  "scale": 1.0,
+  "sw": 6
+ },
+ {
+  "key": "moirai",
+  "family": "Moirai One",
+  "file": "MoiraiOne-Regular.ttf",
+  "dir": "moiraione",
+  "scale": 1.0,
+  "sw": 6
+ },
+ {
+  "key": "grandiflora",
+  "family": "Grandiflora One",
+  "file": "GrandifloraOne-Regular.ttf",
+  "dir": "grandifloraone",
+  "scale": 1.0,
+  "sw": 6
+ },
+ {
+  "key": "bwpicture",
+  "family": "Black And White Picture",
+  "file": "BlackAndWhitePicture-Regular.ttf",
+  "dir": "blackandwhitepicture",
+  "scale": 1.2,
+  "sw": 6
+ },
+ {
+  "key": "notosans",
+  "family": "Noto Sans KR",
+  "file": "NotoSansKR[wght].ttf",
+  "dir": "notosanskr",
+  "scale": 1.0,
+  "sw": 10
+ },
+ {
+  "key": "notoserif",
+  "family": "Noto Serif KR",
+  "file": "NotoSerifKR[wght].ttf",
+  "dir": "notoserifkr",
+  "scale": 1.0,
+  "sw": 10
+ },
+ {
+  "key": "plexkr",
+  "family": "IBM Plex Sans KR",
+  "file": "IBMPlexSansKR-Bold.ttf",
+  "dir": "ibmplexsanskr",
+  "scale": 1.0,
+  "sw": 10
+ },
+ {
+  "key": "jua",
+  "family": "Jua",
+  "file": "Jua-Regular.ttf",
+  "dir": "jua",
+  "scale": 1.0,
+  "sw": 10
+ },
+ {
+  "key": "dohyeon",
+  "family": "Do Hyeon",
+  "file": "DoHyeon-Regular.ttf",
+  "dir": "dohyeon",
+  "scale": 1.0,
+  "sw": 10
+ },
+ {
+  "key": "blackhan",
+  "family": "Black Han Sans",
+  "file": "BlackHanSans-Regular.ttf",
+  "dir": "blackhansans",
+  "scale": 1.0,
+  "sw": 10
+ },
+ {
+  "key": "gaegu",
+  "family": "Gaegu",
+  "file": "Gaegu-Bold.ttf",
+  "dir": "gaegu",
+  "scale": 1.0,
+  "sw": 10
+ }
+]

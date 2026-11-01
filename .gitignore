@@ -1,0 +1,10 @@
+*.out
+__pycache__/
+node_modules/
+.venv/
+studio/public/
+studio/out/
+studio/src/projects/*.tsx
+work/
+*.mp4
+*.mov
