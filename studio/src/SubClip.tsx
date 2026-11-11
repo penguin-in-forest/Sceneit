@@ -7,6 +7,10 @@ import { IN_FX, EMPH_FX, OUT_FX } from "./animlist";
 
 const opts = (keys: readonly string[]) => Object.fromEntries(keys.map((k) => [k, {}]));
 
+// 배경 박스 자막(POV 문구, 게임 속 대사). sceneit/export.py 의 BOXES 와 같아야 한다.
+const BOX_KEYS = ["none", "black", "yellow", "white"] as const;
+const BOX_BG: Record<string, string> = { black: "rgba(0,0,0,0.78)", yellow: "#ffd23f", white: "#ffffff" };
+
 const fx = (name: string, t: number, dur: number): React.CSSProperties =>
   name === "none"
     ? {}
@@ -40,14 +44,17 @@ const Clip: React.FC<{
   fill: string;
   stroke: string;
   hi: string;
+  box?: string;
   style?: React.CSSProperties;
-}> = ({ text, font, y, size, enter, emph, exit, speed, fill, stroke, hi, style }) => {
+}> = ({ text, font, y, size, enter, emph, exit, speed, fill, stroke, hi, box = "none", style }) => {
   const frame = useCurrentFrame();
   const { fps, durationInFrames, width, height } = useVideoConfig();
   const f = getFont(font);
   const unit = width / 720;
   const base = 44 * size * f.scale * unit;
   const strokePx = f.sw * size * unit;
+  const boxBg = BOX_BG[box];
+  const boxPad = boxBg ? 0.9 * base : 0;
   const [fit, setFit] = React.useState(1);
   const [h] = React.useState(() => delayRender(`font-${f.key}`));
   React.useEffect(() => {
@@ -65,10 +72,10 @@ const Clip: React.FC<{
             }).width,
         ),
       );
-      setFit(Math.min(1, (width - 60 * unit - 2 * strokePx) / widest));
+      setFit(Math.min(1, (width - 60 * unit - 2 * strokePx - boxPad) / widest));
       continueRender(h);
     });
-  }, [h, f.key, f.family, text, base, width, unit, strokePx]);
+  }, [h, f.key, f.family, text, base, width, unit, strokePx, boxPad]);
 
   const t = frame / fps;
   const len = durationInFrames / fps;
@@ -88,10 +95,11 @@ const Clip: React.FC<{
                 lineHeight: 1.25,
                 textAlign: "center",
                 color: fill,
-                WebkitTextStroke: `${strokePx}px ${stroke}`,
+                WebkitTextStroke: boxBg ? "0px transparent" : `${strokePx}px ${stroke}`,
                 paintOrder: "stroke fill",
-                filter: `drop-shadow(0 ${3 * unit}px ${4 * unit}px rgba(0,0,0,0.35))`,
+                filter: boxBg ? undefined : `drop-shadow(0 ${3 * unit}px ${4 * unit}px rgba(0,0,0,0.35))`,
                 whiteSpace: "nowrap",
+                ...(boxBg ? { backgroundColor: boxBg, padding: `${0.12 * base * fit}px ${0.45 * base * fit}px`, borderRadius: 0.25 * base * fit } : {}),
               }}
             >
               {text.split("\n").map((l, i) => (
@@ -121,5 +129,6 @@ export const Sub = Interactive.withSchema({
     fill: { type: "color", default: "#ffffff", description: "글자색" },
     stroke: { type: "color", default: "#1b1b1b", description: "테두리색" },
     hi: { type: "color", default: "#ffd23f", description: "강조색 [[ ]]" },
+    box: { type: "enum", default: "none", description: "배경 박스", variants: opts(BOX_KEYS) },
   },
 });

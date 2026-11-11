@@ -1,0 +1,419 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Sceneit</title>
+<style>
+:root {
+  --bg: #121316; --panel: #1a1c20; --panel2: #23262c; --line: #2f333b;
+  --text: #e8e9ec; --dim: #9aa0aa; --faint: #6b717c;
+  --accent: #7c9cff; --accent-ink: #0d1324; --ok: #4fc38a; --err: #ff7a7a; --hi: #ffd23f; --user: #2b3550;
+}
+* { box-sizing: border-box; }
+html, body { margin: 0; height: 100%; background: var(--bg); color: var(--text);
+  font: 14px/1.5 -apple-system, BlinkMacSystemFont, "Apple SD Gothic Neo", Pretendard, system-ui, sans-serif; }
+button, input, select, textarea { font: inherit; color: inherit; }
+[hidden] { display: none !important; }
+.app { display: grid; grid-template-columns: minmax(0, 1fr) 400px; height: 100vh; }
+.left { display: flex; flex-direction: column; min-width: 0; border-right: 1px solid var(--line); }
+.bar { display: flex; align-items: center; gap: 10px; height: 48px; padding: 0 12px; border-bottom: 1px solid var(--line); background: var(--panel); }
+.logo { font-weight: 700; margin-right: 4px; }
+select, .btn { background: var(--panel2); border: 1px solid var(--line); border-radius: 8px; height: 32px; padding: 0 10px; }
+select { max-width: 220px; }
+.btn { cursor: pointer; display: inline-flex; align-items: center; text-decoration: none; white-space: nowrap; }
+.btn:hover { border-color: #444a55; }
+.btn.primary { background: var(--accent); color: var(--accent-ink); border-color: transparent; font-weight: 600; }
+.btn:disabled { opacity: .45; cursor: default; }
+.spacer { flex: 1; }
+.status { display: flex; align-items: center; gap: 6px; color: var(--dim); font-size: 12px; }
+.dot { width: 8px; height: 8px; border-radius: 50%; background: var(--faint); }
+.dot.on { background: var(--ok); }
+.view { position: relative; flex: 1; min-height: 0; }
+.view iframe { position: absolute; inset: 0; width: 100%; height: 100%; border: 0; background: #000; }
+.empty { position: absolute; inset: 0; display: grid; place-items: center; text-align: center; color: var(--dim); padding: 24px; }
+.empty b { display: block; color: var(--text); font-size: 17px; font-weight: 600; margin-bottom: 6px; }
+.empty code { background: var(--panel2); padding: 1px 6px; border-radius: 4px; }
+.pill { position: absolute; top: 12px; left: 50%; transform: translateX(-50%); display: flex; gap: 8px; align-items: center;
+  background: rgba(20, 22, 26, .92); border: 1px solid var(--line); border-radius: 999px; padding: 6px 14px; font-size: 13px; pointer-events: none; }
+.chat { display: flex; flex-direction: column; min-height: 0; background: var(--panel); }
+.steps { display: flex; gap: 4px; padding: 10px 12px; border-bottom: 1px solid var(--line); }
+.step { flex: 1; text-align: center; font-size: 12px; padding: 6px 0; border-radius: 6px; color: var(--faint); background: var(--panel2); }
+.step.past { color: var(--text); }
+.step.on { color: var(--accent-ink); background: var(--accent); font-weight: 600; }
+.log { flex: 1; overflow-y: auto; padding: 14px 12px; display: flex; flex-direction: column; gap: 10px; }
+.msg { max-width: 92%; padding: 9px 12px; border-radius: 12px; white-space: pre-wrap; overflow-wrap: anywhere; }
+.msg.user { align-self: flex-end; background: var(--user); border-bottom-right-radius: 4px; }
+.msg.ai { align-self: flex-start; background: var(--panel2); border-bottom-left-radius: 4px; }
+.msg.note { align-self: center; color: var(--dim); font-size: 12px; padding: 2px 4px; }
+.msg.error { align-self: stretch; max-width: none; background: rgba(255, 122, 122, .08); color: var(--err); border: 1px solid rgba(255, 122, 122, .3); }
+.card { margin-top: 8px; border-top: 1px solid var(--line); padding-top: 6px; font-size: 12.5px; white-space: normal; }
+.row { display: grid; grid-template-columns: 92px 1fr; gap: 8px; padding: 3px 0; }
+.t { color: var(--dim); font-variant-numeric: tabular-nums; }
+.meta { margin-top: 6px; color: var(--faint); font-size: 11.5px; white-space: normal; }
+.hl { color: var(--hi); }
+.busy { align-self: flex-start; display: flex; gap: 8px; align-items: center; color: var(--dim); font-size: 13px; }
+.spin { width: 14px; height: 14px; flex: none; border: 2px solid var(--line); border-top-color: var(--accent); border-radius: 50%; animation: spin .8s linear infinite; }
+@keyframes spin { to { transform: rotate(360deg); } }
+.actions { display: flex; gap: 8px; padding: 0 12px 10px; flex-wrap: wrap; }
+.actions:empty { display: none; }
+.composer { display: flex; gap: 8px; align-items: flex-end; padding: 10px 12px 12px; border-top: 1px solid var(--line); }
+.composer textarea { flex: 1; resize: none; height: 64px; background: var(--panel2); border: 1px solid var(--line); border-radius: 10px; padding: 8px 10px; }
+textarea:focus, input:focus, select:focus { outline: none; border-color: var(--accent); }
+.form { flex: 1; overflow-y: auto; padding: 16px 14px; display: flex; flex-direction: column; gap: 12px; }
+.form h2 { margin: 0; font-size: 16px; }
+.form label { display: flex; flex-direction: column; gap: 5px; font-size: 12.5px; color: var(--dim); }
+.form input[type=text], .form textarea { background: var(--panel2); border: 1px solid var(--line); border-radius: 8px; padding: 8px 10px; }
+.form textarea { height: 72px; resize: vertical; }
+.form select { max-width: none; }
+.two { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.drop { border: 1.5px dashed var(--line); border-radius: 10px; padding: 18px 12px; text-align: center; color: var(--dim); cursor: pointer; }
+.drop.over { border-color: var(--accent); color: var(--text); }
+.files { margin-top: 6px; font-size: 12px; color: var(--text); }
+.form .btn.primary { height: 38px; justify-content: center; }
+#fmsg.bad { color: var(--err); }
+video.result { display: block; width: 100%; max-height: 360px; border-radius: 8px; margin-top: 8px; background: #000; }
+a { color: var(--accent); }
+@media (max-width: 860px) {
+  .app { grid-template-columns: 1fr; grid-template-rows: 55vh 45vh; }
+  .left { border-right: 0; border-bottom: 1px solid var(--line); }
+  .status span:last-child { display: none; }
+}
+</style>
+</head>
+<body>
+<div class="app">
+  <section class="left">
+    <div class="bar">
+      <span class="logo">Sceneit</span>
+      <select id="proj" aria-label="프로젝트"></select>
+      <button class="btn" id="newBtn" type="button">+ 새 프로젝트</button>
+      <span class="spacer"></span>
+      <span class="status"><span class="dot" id="sdot"></span><span id="stext">스튜디오</span></span>
+      <a class="btn" id="popout" target="_blank" rel="noopener">새 창 ↗</a>
+    </div>
+    <div class="view">
+      <iframe id="studio" title="편집 화면" hidden></iframe>
+      <div class="empty" id="empty"></div>
+      <div class="pill" id="pill" hidden><div class="spin"></div><span id="pilltext"></span></div>
+    </div>
+  </section>
+
+  <aside class="chat">
+    <div class="steps" id="steps">
+      <div class="step">1 컷 편집</div>
+      <div class="step">2 자막</div>
+      <div class="step">3 완성</div>
+    </div>
+
+    <form class="form" id="form" hidden>
+      <h2>새 프로젝트</h2>
+      <div class="drop" id="drop">원본 영상을 끌어다 놓거나 눌러서 고르세요<div class="files" id="files"></div></div>
+      <input type="file" id="file" accept="video/*,.mov,.mp4,.m4v" multiple hidden>
+      <label>이름<input type="text" id="fname" placeholder="예: 한강 자전거"></label>
+      <label>상황 한 줄<textarea id="fsit" placeholder="주말에 친구들과 한강에서 자전거를 탔다 (자막 문구를 직접 적어도 돼요)"></textarea></label>
+      <div class="two">
+        <label>컷 방식
+          <select id="fcut"><option value="minimal">원본 흐름 유지</option><option value="paced">짧은 컷으로 재구성</option></select>
+        </label>
+        <label>화면
+          <select id="flayout"><option value="auto">자동</option><option value="cover">세로로 꽉 채움</option><option value="fit">가운데 + 흐린 배경</option></select>
+        </label>
+      </div>
+      <label>목표 길이(초)<input type="text" id="flen" value="15~30"></label>
+      <button class="btn primary" id="go" type="submit">시작</button>
+      <div class="meta" id="fmsg"></div>
+    </form>
+
+    <div class="log" id="log" hidden></div>
+    <div class="actions" id="actions"></div>
+    <form class="composer" id="composer" hidden>
+      <textarea id="input" aria-label="메시지"></textarea>
+      <button class="btn primary" id="send" type="submit">보내기</button>
+    </form>
+  </aside>
+</div>
+
+<script>
+const $ = (id) => document.getElementById(id);
+const enc = encodeURIComponent;
+const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]);
+const fmt = (n) => Number(n || 0).toFixed(1);
+const ORDER = ["cut", "subs", "done"];
+const CUT = { minimal: "원본 흐름 유지", paced: "짧은 컷" };
+const LAYOUT = { cover: "꽉 채움", fit: "가운데+흐린 배경" };
+const PH = {
+  cut: "컷에서 고칠 점을 말해 주세요.\n예) 앞에 흔들리는 부분 빼 줘 / 자전거 장면 더 길게",
+  subs: "자막에서 고칠 점을 말해 주세요.\n예) 첫 자막 더 크게 / 반말로 바꿔 줘",
+  done: "더 고칠 게 있으면 말해 주세요. 자막 단계에서 다시 고쳐요.",
+};
+
+let cur = null, st = null, timer = null, drawn = 0, shownRev = -1, actKey = "", picked = [];
+
+async function api(path, opts = {}) {
+  const r = await fetch(path, { ...opts, headers: { "content-type": "application/json" } });
+  const j = await r.json().catch(() => ({}));
+  if (!r.ok) throw new Error(j.detail || `요청 실패 (${r.status})`);
+  return j;
+}
+
+function studioStatus(up) {
+  $("sdot").classList.toggle("on", !!up);
+  $("stext").textContent = up ? "스튜디오 연결됨" : "스튜디오 꺼짐";
+}
+
+async function loadList() {
+  const j = await api("/api/projects");
+  $("proj").innerHTML = `<option value="">프로젝트 고르기</option>` +
+    j.projects.map((p) => `<option value="${esc(p.name)}">${esc(p.name)}</option>`).join("");
+  $("proj").value = cur || "";
+  $("popout").href = j.studio;
+  studioStatus(j.studio_up);
+  return j;
+}
+
+function showForm() {
+  cur = null; st = null; shownRev = -1;
+  clearTimeout(timer);
+  history.replaceState(null, "", location.pathname);
+  $("proj").value = "";
+  $("form").hidden = false; $("log").hidden = true; $("composer").hidden = true;
+  $("actions").innerHTML = ""; actKey = "";
+  document.querySelectorAll(".step").forEach((e) => (e.className = "step"));
+  $("studio").hidden = true; $("studio").src = "about:blank"; $("pill").hidden = true;
+  $("empty").hidden = false;
+  $("empty").innerHTML = `<div><b>여기에 편집 화면이 떠요</b>오른쪽에서 원본 영상과 상황을 넣고 시작하세요.</div>`;
+}
+
+function openProject(name) {
+  cur = name; drawn = 0; shownRev = -1; actKey = "";
+  history.replaceState(null, "", "#" + enc(name));
+  $("proj").value = name;
+  $("form").hidden = true; $("log").hidden = false; $("composer").hidden = false;
+  $("log").innerHTML = "";
+  refresh();
+}
+
+async function refresh() {
+  clearTimeout(timer);
+  if (!cur) return;
+  const name = cur;
+  try {
+    const s = await api(`/api/projects/${enc(name)}`);
+    if (name !== cur) return;
+    st = s;
+    draw();
+  } catch (e) {
+    console.error(e);
+  }
+  timer = setTimeout(refresh, st && st.busy ? 1500 : 5000);
+}
+
+const since = () => {
+  const s = Math.max(0, Math.round(Date.now() / 1000 - st.since));
+  return s < 60 ? `${s}초` : `${Math.floor(s / 60)}분 ${s % 60}초`;
+};
+const hl = (t) => esc(t).replace(/\[\[(.+?)\]\]/g, '<span class="hl">$1</span>').replace(/\n/g, " / ");
+const cost = (d) => (d.cost ? `$${d.cost.toFixed(2)} · ` : "") + (d.seconds ? `${Math.round(d.seconds)}초 걸림` : "");
+
+function msgHtml(m) {
+  const d = m.data || {};
+  if (m.role === "note") return `<div class="msg note">${esc(m.text)}</div>`;
+  if (m.role === "error") return `<div class="msg error">${esc(m.text)}</div>`;
+  if (m.role === "user") {
+    const extra = m.kind === "start"
+      ? `<div class="meta">${esc(d.files)} · ${CUT[d.cut] || d.cut} · ${LAYOUT[d.layout] || d.layout} · ${esc(d.length)}초</div>` : "";
+    return `<div class="msg user">${esc(m.text)}${extra}</div>`;
+  }
+  let card = "";
+  if (m.kind === "cut") {
+    const multi = d.cuts.some((c) => c.src > 0);
+    card = `<div class="card">${d.cuts.map((c) =>
+      `<div class="row" title="${esc(c.why)}"><span class="t">${multi ? "v" + c.src + " " : ""}${fmt(c.t0)}–${fmt(c.t1)}</span><span>${esc(c.scene)}</span></div>`).join("")}
+      <div class="meta">컷 ${d.cuts.length}개 · 완성 ${fmt(d.duration)}초 · ${cost(d)}</div></div>`;
+  } else if (m.kind === "subs") {
+    card = `<div class="card">${d.subs.map((s) =>
+      `<div class="row"><span class="t">${fmt(s.t0)}–${fmt(s.t1)}</span><span>${hl(s.text)}</span></div>`).join("")}
+      <div class="meta">자막 ${d.subs.length}개 · ${cost(d)} · 왼쪽 편집 화면에서 직접 고쳐도 돼요</div></div>`;
+  } else if (m.kind === "done") {
+    const url = `/api/projects/${enc(cur)}/video?t=${m.t}`;
+    card = `<video class="result" controls preload="metadata" src="${url}"></video><div class="meta"><a href="${url}" download>mp4 받기</a></div>`;
+  }
+  return `<div class="msg ai">${esc(m.text)}${card}</div>`;
+}
+
+function draw() {
+  const si = ORDER.indexOf(st.stage);
+  document.querySelectorAll(".step").forEach((e, i) => (e.className = "step" + (i === si ? " on" : i < si ? " past" : "")));
+
+  const log = $("log");
+  const nearBottom = log.scrollHeight - log.scrollTop - log.clientHeight < 80;
+  if (drawn > st.chat.length) { log.innerHTML = ""; drawn = 0; }
+  log.querySelector(".busy")?.remove();
+  const fresh = st.chat.length > drawn;
+  for (const m of st.chat.slice(drawn)) log.insertAdjacentHTML("beforeend", msgHtml(m));
+  drawn = st.chat.length;
+  if (st.busy) log.insertAdjacentHTML("beforeend", `<div class="busy"><div class="spin"></div><span>${esc(st.progress)} · <span id="elapsed">${since()}</span></span></div>`);
+  if (nearBottom || fresh) log.scrollTop = log.scrollHeight;
+
+  const acts = [];
+  if (!st.busy) {
+    if (st.stage === "cut" && st.ready.cut) acts.push(["confirm", "좋아요, 자막 넣기 →", true]);
+    if (st.stage === "subs") acts.push(["back", "← 컷 다시", false], ["confirm", "좋아요, 영상 뽑기 →", true]);
+    if (st.stage === "done") acts.push(["back", "← 컷 다시", false]);
+  }
+  const download = !st.busy && st.stage === "done" && !st.chat.some((m) => m.kind === "done");
+  const key = acts.map((a) => a[0]).join() + st.stage + download;
+  if (key !== actKey) {
+    actKey = key;
+    $("actions").innerHTML = acts.map(([act, label, main]) =>
+      `<button class="btn${main ? " primary" : ""}" type="button" data-act="${act}">${label}</button>`).join("") +
+      (download ? `<a class="btn" href="/api/projects/${enc(cur)}/video" download>mp4 받기</a>` : "");
+  }
+
+  $("input").disabled = $("send").disabled = st.busy;
+  $("input").placeholder = st.stage === "cut" && !st.ready.cut && !st.busy ? "다시 해 달라고 적어 보세요." : PH[st.stage] || "";
+  studioStatus(st.studio_up);
+  view();
+}
+
+function view() {
+  const url = `${st.studio}/${st.id}`;
+  $("popout").href = st.rev > 0 ? url : st.studio;
+  $("pill").hidden = !(st.busy && st.rev > 0);
+  $("pilltext").textContent = st.progress || "";
+  if (st.rev > 0 && st.studio_up) {
+    if (st.rev !== shownRev) {
+      $("studio").src = `${url}?v=${st.rev}`;
+      shownRev = st.rev;
+    }
+    $("studio").hidden = false;
+    $("empty").hidden = true;
+    return;
+  }
+  $("studio").hidden = true;
+  $("empty").hidden = false;
+  $("empty").innerHTML = !st.studio_up
+    ? `<div><b>스튜디오가 꺼져 있어요</b><code>python -m sceneit.app</code> 으로 다시 띄우거나<br><code>cd studio && npm run studio</code></div>`
+    : st.busy
+      ? `<div><div class="spin" style="margin:0 auto 12px;width:22px;height:22px"></div><b>${esc(st.progress)}</b>컷이 나오면 여기에 편집 화면이 떠요.</div>`
+      : `<div><b>아직 컷이 없어요</b>오른쪽에 다시 해 달라고 적어 보세요.</div>`;
+}
+
+function flash(text) {
+  $("log").insertAdjacentHTML("beforeend", `<div class="msg error">${esc(text)}</div>`);
+  $("log").scrollTop = $("log").scrollHeight;
+}
+
+async function act(path, body) {
+  try {
+    st = await api(`/api/projects/${enc(cur)}/${path}`, { method: "POST", body: JSON.stringify(body || {}) });
+    draw();
+    refresh();
+    return true;
+  } catch (e) {
+    flash(e.message);
+    return false;
+  }
+}
+
+$("actions").addEventListener("click", (e) => {
+  const b = e.target.closest("button[data-act]");
+  if (b && cur) { b.disabled = true; act(b.dataset.act); }
+});
+
+$("composer").addEventListener("submit", async (e) => {
+  e.preventDefault();
+  const text = $("input").value.trim();
+  if (!text || !cur || (st && st.busy)) return;
+  $("input").value = "";
+  if (!(await act("message", { text }))) $("input").value = text;
+});
+
+$("input").addEventListener("keydown", (e) => {
+  // 한글 입력 중(조합 중) Enter는 글자 확정용이라 보내지 않는다
+  if (e.key === "Enter" && !e.shiftKey && !e.isComposing && e.keyCode !== 229) {
+    e.preventDefault();
+    $("composer").requestSubmit();
+  }
+});
+
+setInterval(() => { if (st && st.busy && $("elapsed")) $("elapsed").textContent = since(); }, 1000);
+
+// 새 프로젝트
+function pick(list) {
+  picked = list.filter((f) => f.type.startsWith("video/") || /\.(mp4|mov|m4v|webm|mkv)$/i.test(f.name));
+  $("files").innerHTML = picked.map((f) => `${esc(f.name)} · ${Math.max(1, Math.round(f.size / 1e6))}MB`).join("<br>");
+  if (!$("fname").value && picked[0]) $("fname").value = picked[0].name.replace(/\.[^.]+$/, "");
+}
+$("drop").onclick = () => $("file").click();
+$("file").onchange = () => pick([...$("file").files]);
+$("drop").ondragover = (e) => { e.preventDefault(); $("drop").classList.add("over"); };
+$("drop").ondragleave = () => $("drop").classList.remove("over");
+$("drop").ondrop = (e) => { e.preventDefault(); $("drop").classList.remove("over"); pick([...e.dataTransfer.files]); };
+
+function fmsg(text, bad) {
+  $("fmsg").textContent = text;
+  $("fmsg").classList.toggle("bad", !!bad);
+}
+
+function put(name, file, onp) {
+  return new Promise((ok, bad) => {
+    const x = new XMLHttpRequest();
+    x.open("PUT", `/api/upload/${enc(name)}/${enc(file.name)}`);
+    x.upload.onprogress = (e) => e.lengthComputable && onp(e.loaded / e.total);
+    x.onload = () => {
+      if (x.status < 300) return ok();
+      let msg = `업로드 실패 (${x.status})`;
+      try { msg = JSON.parse(x.responseText).detail || msg; } catch {}
+      bad(new Error(msg));
+    };
+    x.onerror = () => bad(new Error("업로드 실패"));
+    x.send(file);
+  });
+}
+
+$("form").addEventListener("submit", async (e) => {
+  e.preventDefault();
+  const name = $("fname").value.trim();
+  const situation = $("fsit").value.trim();
+  if (!picked.length) return fmsg("원본 영상을 골라 주세요", true);
+  if (!name) return fmsg("이름을 적어 주세요", true);
+  if (!situation) return fmsg("상황을 한 줄 적어 주세요", true);
+  $("go").disabled = true;
+  try {
+    for (let i = 0; i < picked.length; i++) {
+      await put(name, picked[i], (p) => fmsg(`올리는 중 ${i + 1}/${picked.length} · ${Math.round(p * 100)}%`));
+    }
+    fmsg("시작하는 중");
+    await api("/api/projects", {
+      method: "POST",
+      body: JSON.stringify({
+        name, situation, files: picked.map((f) => f.name),
+        cut: $("fcut").value, layout: $("flayout").value, length: $("flen").value.trim(),
+      }),
+    });
+    picked = []; $("files").innerHTML = ""; $("fname").value = ""; $("fsit").value = ""; fmsg("");
+    await loadList();
+    openProject(name);
+  } catch (err) {
+    fmsg(err.message, true);
+  } finally {
+    $("go").disabled = false;
+  }
+});
+
+$("proj").onchange = () => ($("proj").value ? openProject($("proj").value) : showForm());
+$("newBtn").onclick = showForm;
+
+async function fromHash() {
+  try { await loadList(); } catch (e) { console.error(e); }
+  const h = decodeURIComponent(location.hash.slice(1));
+  if (h && [...$("proj").options].some((o) => o.value === h)) { if (h !== cur) openProject(h); }
+  else showForm();
+}
+window.addEventListener("hashchange", fromHash);
+fromHash();
+</script>
+</body>
+</html>

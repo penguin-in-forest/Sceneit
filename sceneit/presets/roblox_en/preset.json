@@ -1,0 +1,10 @@
+{
+ "about": "로블록스 영어 릴스. 2026-11 인스타 릴스 조사(같은 계정 안 비교 25계정·390개) 반영",
+ "lang": "en",
+ "length": "45~60",
+ "cut": "flow",
+ "frame": "black",
+ "checks": {
+  "length": true
+ }
+}

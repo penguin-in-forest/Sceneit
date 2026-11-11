@@ -1,0 +1,13 @@
+{
+ "about": "로블록스 한국어 릴스. 2026-11 인스타 릴스 조사(같은 계정 안 비교 26계정·369개) 반영",
+ "lang": "ko",
+ "length": "20~30",
+ "cut": "rhythm",
+ "frame": "black",
+ "checks": {
+  "length": true,
+  "rhythm": {"min_transitions": 1, "max_gap": 20, "max_in_10s": 3},
+  "subs": {"min_coverage": 0.75, "max_gap": 3.0, "close_gap": 1.0},
+  "title_check": true
+ }
+}

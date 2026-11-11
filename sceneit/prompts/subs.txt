@@ -23,4 +23,5 @@
  - speed: 효과 속도 배율 (1.0 기본, 2.0이면 두 배 빠름)
 
 [출력] 설명 없이 JSON만.
-{"subs":[{"t0":0.2,"t1":2.8,"text":"첫 줄\n둘째 줄","y":0.72,"size":1.9,"font":"jua","fill":"#ffffff","stroke":"#1b1b1b","hi":"#ffd23f","enter":"zoomIn","emph":"none","exit":"fadeOut","speed":1.0,"why":"근거 한 줄"}]}
+{"reply":"사용자에게 보여줄 한두 문장. 자막을 어떤 방향으로 썼는지",
+ "subs":[{"t0":0.2,"t1":2.8,"text":"첫 줄\n둘째 줄","y":0.72,"size":1.9,"font":"jua","fill":"#ffffff","stroke":"#1b1b1b","hi":"#ffd23f","enter":"zoomIn","emph":"none","exit":"fadeOut","speed":1.0,"why":"근거 한 줄"}]}
