@@ -17,6 +17,7 @@
 
 - Python 3.10+ (`pip install -r requirements.txt`)
 - ffmpeg, ffprobe
+  - HDR 원본을 처리하려면 FFmpeg에 `zscale`과 `tonemap` 필터가 필요하다. 해당 필터가 없으면 SDR 원본을 사용한다.
 - Node.js 20+
 - [Claude Code](https://docs.claude.com/en/docs/claude-code) CLI 로그인 (`claude` 명령)
 

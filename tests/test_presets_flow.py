@@ -68,6 +68,14 @@ class PlanFlow(unittest.TestCase):
         plan, meta = presets.after_plan({"checks": {}}, {"cuts": []}, {"cost": 1}, "P", self.w / "plan", [])
         self.assertNotIn("checks", plan)
 
+    def test_malformed_retry_keeps_the_original_cuts(self):
+        cfg = cfg_for("roblox_ko", self.w)
+        original = {"cuts": [{"src": 0, "t0": 0, "t1": 25}]}
+        retry = {"cuts": [None, {"src": "bad", "t0": 0, "t1": 1}]}
+        with mock.patch.object(presets.ai, "ask", return_value=(retry, {"cost": 1.5, "session": "s1"})):
+            plan, _ = presets.after_plan(cfg, original, {"cost": 1.0, "session": "s1"}, "P", self.w / "plan", [100.0])
+        self.assertEqual(plan["cuts"], original["cuts"])
+
 
 class SubsFlow(unittest.TestCase):
     def setUp(self):
@@ -95,6 +103,14 @@ class SubsFlow(unittest.TestCase):
         with mock.patch.object(presets.ai, "ask", side_effect=AssertionError("should not be called")):
             subs, _ = presets.after_subs(cfg, data, {"cost": 0.5}, "PROMPT", self.w / "subs")
         self.assertNotIn("checks", subs)
+
+    def test_malformed_retry_keeps_the_original_subtitles(self):
+        cfg = cfg_for("roblox_ko", self.w)
+        original = {"subs": [{"t0": 0, "t1": 2, "text": "본문"}]}
+        retry = {"subs": [{"t0": 0, "t1": "NaN", "text": "잘못된 시간"}]}
+        with mock.patch.object(presets.ai, "ask", return_value=(retry, {"cost": 1.0, "session": "s1"})):
+            subs, _ = presets.after_subs(cfg, original, {"cost": 0.5, "session": "s1"}, "P", self.w / "subs")
+        self.assertEqual(subs["subs"], original["subs"])
 
 
 if __name__ == "__main__":

@@ -262,11 +262,13 @@ function draw() {
     if (st.stage === "subs") acts.push(["back", "← 컷 다시", false], ["confirm", "좋아요, 영상 뽑기 →", true]);
     if (st.stage === "done") acts.push(["back", "← 컷 다시", false]);
   }
-  const key = acts.map((a) => a[0]).join() + st.stage;
+  const download = !st.busy && st.stage === "done" && !st.chat.some((m) => m.kind === "done");
+  const key = acts.map((a) => a[0]).join() + st.stage + download;
   if (key !== actKey) {
     actKey = key;
     $("actions").innerHTML = acts.map(([act, label, main]) =>
-      `<button class="btn${main ? " primary" : ""}" type="button" data-act="${act}">${label}</button>`).join("");
+      `<button class="btn${main ? " primary" : ""}" type="button" data-act="${act}">${label}</button>`).join("") +
+      (download ? `<a class="btn" href="/api/projects/${enc(cur)}/video" download>mp4 받기</a>` : "");
   }
 
   $("input").disabled = $("send").disabled = st.busy;

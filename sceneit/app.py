@@ -21,7 +21,6 @@ from fastapi import FastAPI, HTTPException, Request
 from fastapi.responses import FileResponse
 
 from . import run
-from .export import write_project
 
 WEB = run.PKG / "web"
 STUDIO_PORT = 3000
@@ -55,13 +54,10 @@ def post(name, role, text, **extra):
         (pdir(name) / "chat.json").write_text(json.dumps(msgs, ensure_ascii=False, indent=1), encoding="utf-8")
 
 
-def set_stage(name, stage, bump=False):
+def set_stage(name, stage):
     cfg = run.load(name)
-    cfg["stage"] = stage
-    if bump:
-        cfg["rev"] = cfg.get("rev", 0) + 1
+    cfg.update(stage=stage, rev=project_status(cfg)[1])
     run.save(cfg)
-    return cfg
 
 
 def progress(name, text):
@@ -101,19 +97,18 @@ def job_cut(name, feedback=None):
     run.cmd_cut(run.load(name))
     cfg = run.load(name)
     info = cfg["cut_info"]
-    write_project(run.STUDIO, cfg["id"], run.WORK / name / "cut.mp4", [], cfg["layout"], info["width"] / info["height"], info["duration"])
-    cfg = set_stage(name, "cut", bump=True)
     cuts = [{k: c.get(k) for k in ("src", "t0", "t1", "scene", "why")} for c in plan["cuts"]]
     text = plan.get("reply") or f"컷 {len(cuts)}개로 {info['duration']:.1f}초 영상을 만들었어요."
     post(name, "ai", text, kind="cut", data={"cuts": cuts, "duration": info["duration"], **spent(cfg, "plan")})
 
 
 def job_subs(name, feedback=None):
-    progress(name, "의견 반영해서 자막 고치는 중" if feedback else "Claude가 완성본을 보고 자막 쓰는 중")
-    subs = run.cmd_subs(run.load(name), feedback)
+    cfg = run.load(name)
+    if feedback or subtitle_status(cfg) != "pending":
+        progress(name, "의견 반영해서 자막 고치는 중" if feedback else "Claude가 완성본을 보고 자막 쓰는 중")
+        run.cmd_subs(cfg, feedback)
     progress(name, "편집 화면에 올리는 중")
-    run.cmd_export(run.load(name))
-    cfg = set_stage(name, "subs", bump=True)
+    subs = run.cmd_export(cfg)
     items = [{k: s.get(k) for k in ("t0", "t1", "text", "font")} for s in subs["subs"]]
     text = subs.get("reply") or f"자막 {len(items)}개를 넣었어요."
     post(name, "ai", text, kind="subs", data={"subs": items, **spent(cfg, "subs")})
@@ -122,7 +117,6 @@ def job_subs(name, feedback=None):
 def job_render(name):
     progress(name, "최종 영상 렌더링 중")
     run.cmd_render(run.load(name))
-    set_stage(name, "done")
     post(name, "ai", "완성했어요. 아래에서 보고 받을 수 있어요. 더 고칠 게 있으면 말해 주세요.", kind="done")
 
 
@@ -132,14 +126,44 @@ def studio_up():
         return s.connect_ex(("127.0.0.1", STUDIO_PORT)) == 0
 
 
+def subtitle_status(cfg):
+    folder = run.WORK / cfg["name"]
+    subs, cut = folder / "subs.json", folder / "cut.mp4"
+    if not subs.is_file() or not cut.is_file() or subs.stat().st_mtime_ns < cut.stat().st_mtime_ns:
+        return None
+    src = run.studio_source(cfg)
+    if src.is_file() and src.stat().st_mtime_ns >= subs.stat().st_mtime_ns:
+        return "published"
+    return "pending"
+
+
+def project_status(cfg):
+    if "stage" in cfg:
+        return cfg["stage"], cfg.get("rev", 0) if "cut_info" in cfg else 0
+
+    # 예전 명령줄 프로젝트에는 stage와 rev가 저장되지 않았다.
+    src = run.studio_source(cfg)
+    media = run.STUDIO / "public" / "media" / f"{cfg['id']}.mp4"
+    cut = run.WORK / cfg["name"] / "cut.mp4"
+    if not (cut.is_file() and src.is_file() and media.is_file()):
+        return "cut", 0
+    if min(src.stat().st_mtime_ns, media.stat().st_mtime_ns) < cut.stat().st_mtime_ns:
+        return "cut", 0
+    final = cut.parent / f"{cfg['id']}.mp4"
+    if final.is_file() and final.stat().st_mtime_ns >= src.stat().st_mtime_ns:
+        return "done", 1
+    return ("subs" if subtitle_status(cfg) == "published" else "cut"), 1
+
+
 def state(name):
     cfg = cfg_of(name)
     job = JOBS.get(name)
+    stage, rev = project_status(cfg)
     return {
         "name": name,
         "id": cfg["id"],
-        "stage": cfg.get("stage", "cut"),
-        "rev": cfg.get("rev", 0),
+        "stage": stage,
+        "rev": rev,
         "spent": cfg.get("spent", 0),
         "ready": {"cut": "cut_info" in cfg, "subs": (run.WORK / name / "subs.json").exists()},
         "busy": job is not None,
@@ -161,13 +185,21 @@ def projects():
     items = []
     for p in sorted(run.WORK.glob("*/project.json"), key=lambda p: p.stat().st_mtime, reverse=True):
         cfg = json.loads(p.read_text(encoding="utf-8"))
-        if "stage" in cfg:
-            items.append({"name": cfg["name"], "stage": cfg["stage"]})
+        items.append({"name": cfg["name"], "stage": project_status(cfg)[0]})
     return {"projects": items, "studio": f"http://localhost:{STUDIO_PORT}", "studio_up": studio_up()}
 
 
 @app.get("/api/projects/{name}")
 def get_project(name: str):
+    with LOCK:
+        cfg = cfg_of(name)
+        cut = run.WORK / name / "cut.mp4"
+        if "stage" not in cfg and "cut_info" in cfg and cut.is_file() and not run.studio_source(cfg).exists():
+            run.ensure_unique_id(cfg)
+            if subtitle_status(cfg) == "pending":
+                run.cmd_export(cfg)
+            else:
+                run.publish_preview(cfg, [], "cut")
     return state(name)
 
 
@@ -213,8 +245,6 @@ def create(body: dict):
         cfg = run.cmd_new(a)
     except Exception as e:
         raise HTTPException(400, f"영상을 읽지 못했어요: {e}")
-    cfg.update(stage="cut", rev=0)
-    run.save(cfg)
     names = ", ".join(f.name for f in files)
     post(name, "user", situation, kind="start", data={"files": names, "cut": a.cut, "layout": cfg["layout"], "length": a.length})
     start(name, job_cut)
@@ -230,7 +260,7 @@ def message(name: str, body: dict):
     if name in JOBS:
         raise HTTPException(409, "아직 작업 중이에요")
     post(name, "user", text)
-    if cfg.get("stage") == "cut":
+    if project_status(cfg)[0] == "cut":
         start(name, job_cut, text)
     else:  # subs, done: 자막 단계에서 다시
         set_stage(name, "subs")
@@ -243,12 +273,12 @@ def confirm(name: str):
     cfg = cfg_of(name)
     if name in JOBS:
         raise HTTPException(409, "아직 작업 중이에요")
-    stage = cfg.get("stage")
+    stage, rev = project_status(cfg)
     if stage == "cut":
         if "cut_info" not in cfg:
             raise HTTPException(400, "컷이 아직 없어요")
         post(name, "user", "좋아요, 자막 넣어 주세요", kind="confirm")
-        if cfg.get("session", {}).get("subs") and (run.WORK / name / "subs.json").exists():
+        if rev and subtitle_status(cfg) == "published":
             # 컷을 다시 돌리지 않고 돌아왔다가 넘어가는 경우: 자막은 그대로
             set_stage(name, "subs")
             post(name, "ai", "컷이 그대로라 자막도 그대로 뒀어요. 고칠 점을 말해 주세요.")
@@ -267,7 +297,7 @@ def back(name: str):
     cfg = cfg_of(name)
     if name in JOBS:
         raise HTTPException(409, "아직 작업 중이에요")
-    if cfg.get("stage") not in ("subs", "done"):
+    if project_status(cfg)[0] not in ("subs", "done"):
         raise HTTPException(400, "이미 컷 단계예요")
     set_stage(name, "cut")
     post(name, "note", "컷 단계로 돌아왔어요. 컷을 다시 고치면 자막은 새로 씁니다.")

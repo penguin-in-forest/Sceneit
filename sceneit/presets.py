@@ -9,6 +9,7 @@ from pathlib import Path
 from . import ai
 from .checks import check_cuts, check_subs, close_gaps
 from .cut import clamp
+from .export import normalize_subs
 from .scenes import scene_changes
 
 DIR = Path(__file__).resolve().parent / "presets"
@@ -87,7 +88,7 @@ def after_plan(cfg, plan, meta, prompt, d, durations):
         print("  검사에 걸림: " + " / ".join(problems))
         retry, meta = retry_ask(cfg, problems, plan, meta, prompt, d)
         retry = retry or {}
-        cuts = clamp([c for c in retry.get("cuts", []) if 0 <= int(c.get("src", 0)) < len(durations)], durations)
+        cuts = clamp(retry.get("cuts"), durations)
         retried = True
         if cuts:
             p2, m2 = check_cuts(cuts, scenes, cfg["length"], rules)
@@ -116,7 +117,11 @@ def after_subs(cfg, subs, meta, prompt, d):
             retry, meta = retry_ask(cfg, problems, subs, meta, prompt, d)
             retry = retry or {}
             retried = True
-            if isinstance(retry.get("subs"), list) and retry["subs"]:
+            try:
+                retry["subs"] = normalize_subs(retry.get("subs"), duration)
+            except ValueError:
+                retry["subs"] = []
+            if retry["subs"]:
                 if rules.get("subs"):
                     close_gaps(retry["subs"], duration, limit)
                 p2, m2 = check_subs(retry, duration, rules)

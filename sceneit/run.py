@@ -4,10 +4,11 @@ import shutil
 import subprocess
 import sys
 from pathlib import Path
+from tempfile import TemporaryDirectory
 
 from . import ai, presets
-from .cut import clamp, render_cut
-from .export import project_id, write_project
+from .cut import clamp, ensure_hdr_support, render_cut
+from .export import normalize_subs, project_id, write_project
 from .fontsheet import make_font_sheets
 from .media import probe
 from .sheets import describe, make_sheets
@@ -44,7 +45,34 @@ def load(name):
 def save(cfg):
     d = WORK / cfg["name"]
     d.mkdir(parents=True, exist_ok=True)
-    (d / "project.json").write_text(json.dumps(cfg, ensure_ascii=False, indent=1), encoding="utf-8")
+    with TemporaryDirectory(dir=d) as temp:
+        path = Path(temp) / "project.json"
+        path.write_text(json.dumps(cfg, ensure_ascii=False, indent=1), encoding="utf-8")
+        path.replace(d / "project.json")
+
+
+def studio_source(cfg):
+    return STUDIO / "src" / "projects" / f"{cfg['id']}.tsx"
+
+
+def ensure_unique_id(cfg):
+    own = (WORK / cfg["name"] / "project.json").resolve()
+    for path in WORK.glob("*/project.json"):
+        if path.resolve() == own:
+            continue
+        other = json.loads(path.read_text(encoding="utf-8"))
+        if other["id"].casefold() == cfg["id"].casefold():
+            raise ValueError(f"'{other['name']}' 프로젝트와 편집 ID가 겹칩니다. 다른 이름으로 새 프로젝트를 만들어 주세요.")
+
+
+def publish_preview(cfg, subs, stage):
+    info = cfg["cut_info"]
+    cut = WORK / cfg["name"] / "cut.mp4"
+    rev = cfg.get("rev", int(studio_source(cfg).is_file()))
+    subs = write_project(STUDIO, cfg["id"], cut, subs, cfg["layout"], info["width"] / info["height"], info["duration"], frame=cfg.get("frame", "blur"))
+    cfg.update(stage=stage, rev=rev + 1)
+    save(cfg)
+    return subs
 
 
 def copy_texts(cfg, dest):
@@ -55,14 +83,19 @@ def copy_texts(cfg, dest):
 def cmd_new(a):
     pre = presets.load(getattr(a, "preset", None))  # 직접 준 옵션 > 프리셋 > 기본값
     videos = [str(Path(v).resolve()) for v in a.video]
-    info = probe(videos[0])
+    infos = [probe(v) for v in videos]
+    ensure_hdr_support(infos)
+    info = infos[0]
+    existing = load(a.name) if (WORK / a.name / "project.json").exists() else None
+    if existing and existing["name"] != a.name:
+        raise ValueError("같은 이름의 프로젝트가 있어요")
     layout = a.layout
     if layout == "auto":
         layout = "cover" if info["width"] / info["height"] < 0.7 else "fit"
     cut = a.cut or pre.get("cut", "minimal")
     cfg = {
         "name": a.name,
-        "id": project_id(a.name),
+        "id": existing["id"] if existing else project_id(a.name),
         "videos": videos,
         "situation": a.situation,
         "style": str(Path(a.style or pre.get("style") or PKG / "assets" / "style.md").resolve()),
@@ -75,7 +108,10 @@ def cmd_new(a):
         "preset": pre.get("name"),
         "checks": pre.get("checks", {}),
         "cost": {},
+        "stage": "cut",
+        "rev": existing.get("rev", 0) if existing else 0,
     }
+    ensure_unique_id(cfg)
     save(cfg)
     print(f"프로젝트 {a.name}: 영상 {len(videos)}개, 레이아웃 {layout}, 컷 {cut}, 길이 {cfg['length']}초" + (f", 프리셋 {cfg['preset']}" if cfg["preset"] else ""))
     return cfg
@@ -108,6 +144,9 @@ def plan_now(cfg):
 
 
 def cmd_plan(cfg, feedback=None):
+    infos = [probe(v) for v in cfg["videos"]]
+    ensure_hdr_support(infos)
+    durations = [info["duration"] for info in infos]
     d = WORK / cfg["name"] / "plan"
     sess = cfg.get("session", {}).get("plan") if feedback else None
     if sess:
@@ -120,10 +159,9 @@ def cmd_plan(cfg, feedback=None):
             prompt += "\n\n" + revise(feedback, plan_now(cfg))
     (d / ("prompt_revise.txt" if feedback else "prompt.txt")).write_text(prompt, encoding="utf-8")
     plan, meta = ai.ask(prompt, d, cfg["model"], resume=sess)
-    durations = [probe(v)["duration"] for v in cfg["videos"]]
-    plan["cuts"] = clamp([c for c in plan.get("cuts", []) if 0 <= int(c.get("src", 0)) < len(durations)], durations)
+    plan["cuts"] = clamp(plan.get("cuts"), durations)
     if not plan["cuts"]:
-        raise RuntimeError("Claude가 쓸 구간을 하나도 고르지 않았습니다")
+        raise RuntimeError("Claude가 고른 컷 중 원본 범위 안에 편집할 수 있는 구간이 없습니다")
     plan, meta = presets.after_plan(cfg, plan, meta, prompt, d, durations)
     (WORK / cfg["name"] / "plan.json").write_text(json.dumps(plan, ensure_ascii=False, indent=1), encoding="utf-8")
     record(cfg, "plan", meta, resumed=bool(sess))
@@ -137,10 +175,11 @@ def cmd_plan(cfg, feedback=None):
 
 def cmd_cut(cfg):
     plan = json.loads((WORK / cfg["name"] / "plan.json").read_text(encoding="utf-8"))
-    info = render_cut(cfg["videos"], plan["cuts"], WORK / cfg["name"] / "cut.mp4", cfg["layout"])
+    ensure_unique_id(cfg)
+    info = render_cut(cfg["videos"], plan.get("cuts"), WORK / cfg["name"] / "cut.mp4", cfg["layout"])
     cfg["cut_info"] = info
     cfg.get("session", {}).pop("subs", None)  # 컷이 바뀌면 자막 대화는 새로 시작
-    save(cfg)
+    publish_preview(cfg, [], "cut")
     print(f"컷 영상 {info['width']}x{info['height']}, {info['duration']:.1f}초")
 
 
@@ -156,7 +195,7 @@ def layout_note(cfg):
 
 
 def subs_now(cfg):
-    tsx = STUDIO / "src" / "projects" / f"{cfg['id']}.tsx"
+    tsx = studio_source(cfg)
     if tsx.exists() and "<Sub" in tsx.read_text(encoding="utf-8"):
         return (
             "편집 화면 파일입니다. 사용자가 편집 화면에서 직접 고친 내용이 들어 있을 수 있으니 이것을 기준으로 고치세요. "
@@ -191,8 +230,7 @@ def cmd_subs(cfg, feedback=None):
             prompt += "\n\n" + revise(feedback, subs_now(cfg))
     (d / ("prompt_revise.txt" if feedback else "prompt.txt")).write_text(prompt, encoding="utf-8")
     subs, meta = ai.ask(prompt, d, cfg["model"], resume=sess)
-    if not isinstance(subs.get("subs"), list):
-        raise RuntimeError("Claude 응답에 subs 목록이 없습니다")
+    subs["subs"] = normalize_subs(subs.get("subs"), cfg["cut_info"]["duration"])
     subs, meta = presets.after_subs(cfg, subs, meta, prompt, d)
     (w / "subs.json").write_text(json.dumps(subs, ensure_ascii=False, indent=1), encoding="utf-8")
     record(cfg, "subs", meta, resumed=bool(sess))
@@ -205,15 +243,22 @@ def cmd_subs(cfg, feedback=None):
 
 def cmd_export(cfg):
     w = WORK / cfg["name"]
-    subs = json.loads((w / "subs.json").read_text(encoding="utf-8"))["subs"]
-    info = cfg["cut_info"]
-    write_project(STUDIO, cfg["id"], w / "cut.mp4", subs, cfg["layout"], info["width"] / info["height"], info["duration"], frame=cfg.get("frame", "blur"))
+    data = json.loads((w / "subs.json").read_text(encoding="utf-8"))
+    ensure_unique_id(cfg)
+    data["subs"] = publish_preview(cfg, data.get("subs"), "subs")
     print(f"스튜디오에 등록: {cfg['id']}")
+    return data
 
 
 def cmd_render(cfg):
+    ensure_unique_id(cfg)
     out = (WORK / cfg["name"] / f"{cfg['id']}.mp4").resolve()
-    subprocess.run(["npx", "remotion", "render", "src/index.ts", cfg["id"], str(out), "--image-format=png", "--crf=16", "--log=error"], cwd=STUDIO, check=True)
+    with TemporaryDirectory(dir=out.parent, prefix=".render-") as temp:
+        rendered = Path(temp) / out.name
+        subprocess.run(["npx", "remotion", "render", "src/index.ts", cfg["id"], str(rendered), "--image-format=png", "--crf=16", "--log=error"], cwd=STUDIO, check=True)
+        rendered.replace(out)
+    cfg["stage"] = "done"
+    save(cfg)
     print(f"완성: {out}")
 
 
